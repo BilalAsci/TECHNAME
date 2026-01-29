@@ -9,7 +9,7 @@ from datetime import datetime
 st.set_page_config(page_title="TECHMATE", page_icon="🎓", layout="wide")
 api_key = os.getenv("API_KEY")
 
-# --- CSS STYLES ---
+# --- CSS STYLES (RENK DÜZELTMESİ) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&display=swap');
@@ -18,10 +18,17 @@ st.markdown("""
         font-family: 'Outfit', sans-serif;
     }
     
+    /* Ana Arka Plan */
     .stApp {
         background: radial-gradient(circle at top right, #fdf2f8, #e0f2fe, #f1f5f9);
     }
-    
+
+    /* KURAL: Ana ekrandaki tüm yazıları KOYU renk yap */
+    .main p, .main h1, .main h2, .main h3, .main h4, .main li, .main span, .main div {
+        color: #0f172a !important;
+    }
+
+    /* Yan Menü (Sidebar) - Burası Beyaz kalmalı */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
     }
@@ -51,8 +58,8 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 0.1em;
         transition: all 0.2s;
-        background-color: #0f172a;
         color: white !important;
+        background-color: #0f172a;
     }
 
     .leaderboard-entry {
@@ -67,6 +74,9 @@ st.markdown("""
     
     .leaderboard-user {
         background: #2563eb !important;
+        color: white !important;
+    }
+    .leaderboard-user span, .leaderboard-user b {
         color: white !important;
     }
     </style>
@@ -166,7 +176,7 @@ def view_home():
             st.markdown(f"""
                 <div class='module-card'>
                     <p style='color: #3b82f6 !important; font-weight: 900; font-size: 0.7rem;'>{mod['cert']}</p>
-                    <h3 style='margin: 0; font-weight: 900; color:black;'>{mod['title']}</h3>
+                    <h3 style='margin: 0; font-weight: 900;'>{mod['title']}</h3>
                     <p style='font-size: 0.8rem; color: #64748b !important;'>{mod['desc']}</p>
                     <span style='background: #f1f5f9; padding: 2px 8px; border-radius: 10px; font-size: 0.6rem; font-weight: 900; color: #333 !important;'>{mod['diff']}</span>
                 </div>
@@ -238,4 +248,88 @@ def view_games():
         
         for i, entry in enumerate(leaderboard):
             cls = "leaderboard-user" if entry.get("is_u") else ""
-            st.markdown(f"<div class='leaderboard-entry {cls}'><span>{i+1}. {entry['n
+            st.markdown(f"<div class='leaderboard-entry {cls}'><span>{i+1}. {entry['n']}</span> <b>{entry['s']} XP</b></div>", unsafe_allow_html=True)
+        
+        if st.button("REJOUER"):
+            st.session_state.game_over = False
+            st.session_state.game_score = 0
+            st.session_state.game_joker = True
+            st.rerun()
+        return
+
+    if not st.session_state.game_player:
+        st.markdown("### Identifie-toi")
+        name = st.text_input("Ton nom:")
+        if st.button("Lancer") and name:
+            st.session_state.game_player = name
+            st.rerun()
+        return
+
+    st.markdown(f"**Joueur:** {st.session_state.game_player} | **Score:** {st.session_state.game_score} XP | **Joker:** {'✅' if st.session_state.game_joker else '❌'}")
+    
+    if st.session_state.current_game_id is None:
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🚀 Maître des Ports"): st.session_state.current_game_id = 'ports' ; st.rerun()
+        with c2:
+            if st.button("💻 Terminal Héros"): st.session_state.current_game_id = 'commands' ; st.rerun()
+    else:
+        if st.session_state.game_question is None:
+            if st.session_state.current_game_id == 'ports':
+                st.session_state.game_question = random.choice(PORTS_DATA)
+            else:
+                st.session_state.game_question = random.choice(COMMANDS_FR)
+        
+        q = st.session_state.game_question
+        
+        st.markdown(f"<div class='module-card' style='text-align:center;'><h3>{q.get('name') or q.get('q')}</h3></div>", unsafe_allow_html=True)
+        
+        if st.session_state.current_game_id == 'ports':
+            guess = st.number_input("Port #", value=0)
+            if st.button("Vérifier"):
+                if guess == q['port']:
+                    st.session_state.game_score += 50
+                    st.success("Correct !")
+                    st.session_state.game_question = None
+                    st.rerun()
+                else:
+                    if st.session_state.game_joker:
+                        st.session_state.game_joker = False
+                        st.warning("Joker utilisé !")
+                    else:
+                        st.error(f"Fini ! C'était {q['port']}")
+                        st.session_state.game_over = True
+                        st.rerun()
+        else:
+            ans = st.radio("Options:", q['opts'])
+            if st.button("Soumettre"):
+                if ans == q['a']:
+                    st.session_state.game_score += 100
+                    st.success("Bravo !")
+                    st.session_state.game_question = None
+                    st.rerun()
+                else:
+                    if st.session_state.game_joker:
+                        st.session_state.game_joker = False
+                        st.warning("Joker utilisé !")
+                    else:
+                        st.error(f"Fini ! C'était {q['a']}")
+                        st.session_state.game_over = True
+                        st.rerun()
+
+def view_resources():
+    st.markdown("<h2 class='techmate-title'>RESSOURCES</h2>", unsafe_allow_html=True)
+    res = [
+        {"n": "Inforoute FPT", "u": "https://www.inforoutefpt.org", "d": "Programme officiel DEP 5229."},
+        {"n": "Cisco Skills", "u": "https://skillsforall.com", "d": "Bases réseaux gratuites."},
+    ]
+    for r in res:
+        st.markdown(f"#### [{r['n']}]({r['u']})")
+        st.write(r['d'])
+
+# --- MAIN ROUTING ---
+if st.session_state.view == 'Home': view_home()
+elif st.session_state.view == 'Chat': view_chat()
+elif st.session_state.view == 'Library': view_library()
+elif st.session_state.view == 'Games': view_games()
+elif st.session_state.view == 'Resources': view_resources()
