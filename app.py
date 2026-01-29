@@ -1,6 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-import json
 import os
 import random
 from datetime import datetime
@@ -9,7 +8,7 @@ from datetime import datetime
 st.set_page_config(page_title="TECHMATE", page_icon="🎓", layout="wide")
 api_key = os.getenv("API_KEY")
 
-# --- CSS (TASARIM VE RENK DÜZELTMELERİ) ---
+# --- CSS (TASARIM VE RENK DÜZELTMELERİ - ZORLA KOYU YAZI) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&display=swap');
@@ -23,12 +22,18 @@ st.markdown("""
         background: radial-gradient(circle at top right, #fdf2f8, #e0f2fe, #f1f5f9);
     }
     
-    /* Yan Menü (Sidebar) */
+    /* 1. KURAL: Ana ekrandaki TÜM başlık ve yazıları zorla SİYAH yap */
+    /* Streamlit'in kendi elementlerini (h1, h2, p, markdown) hedef alıyoruz */
+    .main p, .main h1, .main h2, .main h3, .main h4, .main h5, .main span, .main div {
+        color: #0f172a !important; /* Koyu Lacivert */
+    }
+    
+    /* Yan Menü (Sidebar) - Burası Beyaz kalmalı */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
     }
     [data-testid="stSidebar"] * {
-        color: white !important; /* Yan menü yazıları beyaz */
+        color: white !important; /* Yan menü yazıları BEYAZ */
     }
     
     /* Kart Tasarımı */
@@ -40,21 +45,15 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         transition: all 0.3s ease;
         margin-bottom: 1rem;
-        color: #1e293b; /* Kart içi yazı rengi (KOYU) */
     }
     
-    .module-card:hover {
-        border-color: #06b6d4;
-        transform: translateY(-5px);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    }
-    
-    /* Kart içi başlıklar ve yazılar */
+    /* Kart içi başlıklar ve yazılar (Kesin siyah) */
     .module-card h3 {
         color: #0f172a !important;
         font-weight: 900;
         font-size: 1.2rem;
         margin-bottom: 0.5rem;
+        margin-top: 0 !important;
     }
     .module-card p {
         color: #475569 !important;
@@ -75,7 +74,7 @@ st.markdown("""
     /* Butonlar */
     .stButton>button {
         background: linear-gradient(90deg, #0f172a 0%, #334155 100%);
-        color: white;
+        color: white !important; /* Buton yazısı beyaz */
         border: none;
         border-radius: 0.8rem;
         font-weight: 600;
@@ -84,20 +83,21 @@ st.markdown("""
     .stButton>button:hover {
         transform: scale(1.02);
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        color: white !important;
     }
     
-    /* Başlıklar */
+    /* Özel Başlık Sınıfı */
     .techmate-title {
         font-size: 3rem;
         font-weight: 900;
-        color: #1e1b4b;
+        color: #1e1b4b !important;
         letter-spacing: -0.05em;
         margin-bottom: 1rem;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- İÇERİK (SENİN ORİJİNAL VERİLERİN) ---
+# --- İÇERİK VERİLERİ ---
 MODULES_DATA = {
     'fr': [
         {"id": 1, "title": "Matériel & Postes", "desc": "Assemblage et maintenance.", "cert": "CompTIA A+", "diff": "Débutant"},
@@ -185,122 +185,4 @@ with st.sidebar:
 def view_home():
     st.markdown("<h2 class='techmate-title'>MODULES DU DEP</h2>", unsafe_allow_html=True)
     cols = st.columns(3)
-    modules = MODULES_DATA[st.session_state.lang]
-    for i, mod in enumerate(modules):
-        with cols[i % 3]:
-            st.markdown(f"""
-                <div class='module-card'>
-                    <span class='badge'>{mod['cert']}</span>
-                    <h3>{mod['title']}</h3>
-                    <p>{mod['desc']}</p>
-                    <div style='margin-top: 10px; font-size: 0.8rem; font-weight: bold; color: #64748b;'>{mod['diff']}</div>
-                </div>
-            """, unsafe_allow_html=True)
-            if st.button(f"GO: {mod['title']}", key=f"mod_{mod['id']}"):
-                st.session_state.messages.append({"role": "user", "content": f"Aide-moi sur le module {mod['title']}"})
-                st.session_state.view = 'Chat'
-                st.rerun()
-
-def view_chat():
-    st.markdown("<h2 class='techmate-title'>LABO SOCRATIQUE</h2>", unsafe_allow_html=True)
-    
-    for m in st.session_state.messages:
-        with st.chat_message(m['role']):
-            st.write(m['content'])
-
-    if prompt := st.chat_input("Pose une question technique..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
-        
-        with st.chat_message("assistant"):
-            with st.spinner("TECHMATE analyse..."):
-                resp = get_mentor_response(prompt)
-                st.write(resp)
-                st.session_state.messages.append({"role": "assistant", "content": resp})
-
-def view_library():
-    st.markdown("<h2 class='techmate-title'>MA BIBLIOTHÈQUE</h2>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        st.markdown("### 📥 Ajouter")
-        uploaded_file = st.file_uploader("PDF / Doc", type=['pdf', 'docx', 'txt'])
-        if uploaded_file:
-            st.success(f"Fichier {uploaded_file.name} reçu ! (Simulation)")
-    
-    with col2:
-        st.info("Cette section simule le stockage de tes fichiers de cours.")
-
-def view_games():
-    st.markdown("<h2 class='techmate-title'>ARCADE TI</h2>", unsafe_allow_html=True)
-    
-    if st.session_state.game_over:
-        st.error("GAME OVER!")
-        if st.button("REJOUER / RESTART"):
-            st.session_state.game_over = False
-            st.session_state.game_score = 0
-            st.session_state.game_joker = True
-            st.rerun()
-        return
-
-    st.markdown(f"#### Score: {st.session_state.game_score} XP | Joker: {'✅' if st.session_state.game_joker else '❌'}")
-    
-    if st.session_state.current_game_id is None:
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🚀 Maître des Ports"): st.session_state.current_game_id = 'ports'; st.rerun()
-        with c2:
-            if st.button("💻 Terminal Héros"): st.session_state.current_game_id = 'commands'; st.rerun()
-    else:
-        if st.session_state.game_question is None:
-            if st.session_state.current_game_id == 'ports':
-                st.session_state.game_question = random.choice(PORTS_DATA)
-            else:
-                st.session_state.game_question = random.choice(COMMANDS_FR)
-        
-        q = st.session_state.game_question
-        
-        # Oyun Arayüzü
-        st.markdown(f"<div class='module-card' style='text-align:center;'><h3>{q.get('name') or q.get('q')}</h3></div>", unsafe_allow_html=True)
-        
-        if st.session_state.current_game_id == 'ports':
-            guess = st.number_input("Port #", value=0)
-            if st.button("Vérifier"):
-                if guess == q['port']:
-                    st.session_state.game_score += 50
-                    st.success("Correct!")
-                    st.session_state.game_question = None
-                    st.rerun()
-                else:
-                    st.error(f"Non! C'était {q['port']}")
-                    st.session_state.game_over = True
-                    st.rerun()
-        else:
-            ans = st.radio("Options:", q['opts'])
-            if st.button("Valider"):
-                if ans == q['a']:
-                    st.session_state.game_score += 100
-                    st.success("Bravo!")
-                    st.session_state.game_question = None
-                    st.rerun()
-                else:
-                    st.error("Perdu!")
-                    st.session_state.game_over = True
-                    st.rerun()
-            
-        if st.button("⬅️ Menu Arcade"):
-            st.session_state.current_game_id = None
-            st.session_state.game_question = None
-            st.rerun()
-
-def view_resources():
-    st.markdown("<h2 class='techmate-title'>RESSOURCES</h2>", unsafe_allow_html=True)
-    st.markdown("- [Inforoute FPT](https://www.inforoutefpt.org)\n- [Cisco Skills](https://skillsforall.com)")
-
-# --- MAIN ROUTING ---
-if st.session_state.view == 'Home': view_home()
-elif st.session_state.view == 'Chat': view_chat()
-elif st.session_state.view == 'Library': view_library()
-elif st.session_state.view == 'Games': view_games()
-elif st.session_state.view == 'Resources': view_resources()
+    modules
