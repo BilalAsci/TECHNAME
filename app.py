@@ -1,6 +1,22 @@
 import streamlit as st
-import google.generativeai as genai
 import os
+import subprocess
+import sys
+
+# --- OTOMATİK GÜNCELLEME SİSTEMİ (Atom Bombası 💣) ---
+# Streamlit kütüphaneyi bulamazsa veya eski sürümse, zorla yenisini yükler.
+try:
+    import google.generativeai as genai
+    # Sürüm kontrolü yapalım, eskiyse güncelleyelim
+    from importlib.metadata import version
+    if version("google-generativeai") < "0.8.3":
+        raise ImportError
+except ImportError:
+    st.warning("Sistem güncelleniyor... Lütfen bekleyin (10-15 saniye).")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "google-generativeai>=0.8.3"])
+    st.rerun() # Sayfayı yenile
+
+# --- KODUN GERİ KALANI BURADAN DEVAM EDİYOR ---
 import random
 from datetime import datetime
 
@@ -16,7 +32,6 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
     .stApp { background: radial-gradient(circle at top right, #fdf2f8, #e0f2fe, #f1f5f9); }
     
-    /* Tüm yazıları koyu renk yap */
     .main p, .main h1, .main h2, .main h3, .main h4, .main li, .main span, .main div {
         color: #0f172a !important;
     }
@@ -83,14 +98,14 @@ if 'game_over' not in st.session_state: st.session_state.game_over = False
 if 'current_game_id' not in st.session_state: st.session_state.current_game_id = None
 if 'game_question' not in st.session_state: st.session_state.game_question = None
 
-# --- GEMINI INTEGRATION (AKILLI MODEL SEÇİMİ) ---
+# --- GEMINI INTEGRATION ---
 def get_mentor_response(user_input):
     if not api_key:
         return "⚠️ ERREUR: Clé API manquante / API Key Missing."
     
     genai.configure(api_key=api_key)
     
-    # Denenecek Modeller Listesi (Sırayla dener)
+    # Tüm modelleri sırayla dene
     models_to_try = [
         'gemini-1.5-flash',
         'gemini-1.5-flash-latest',
@@ -106,7 +121,6 @@ def get_mentor_response(user_input):
     """
     full_prompt = f"{system_prompt}\n\nHistorique: {str(st.session_state.messages[-3:])}\nUser: {user_input}"
 
-    # Döngü ile modelleri dene
     last_error = ""
     for model_name in models_to_try:
         try:
@@ -115,9 +129,9 @@ def get_mentor_response(user_input):
             return response.text
         except Exception as e:
             last_error = str(e)
-            continue # Bir sonraki modele geç
+            continue
             
-    return f"Tüm modeller denendi ama hata alındı. Lütfen requirements.txt dosyasını güncelle. Hata: {last_error}"
+    return f"Tüm modeller denendi. Hata: {last_error}"
 
 # --- SIDEBAR ---
 with st.sidebar:
