@@ -185,4 +185,123 @@ with st.sidebar:
 def view_home():
     st.markdown("<h2 class='techmate-title'>MODULES DU DEP</h2>", unsafe_allow_html=True)
     cols = st.columns(3)
-    modules
+    modules = MODULES_DATA[st.session_state.lang]
+    for i, mod in enumerate(modules):
+        with cols[i % 3]:
+            st.markdown(f"""
+                <div class='module-card'>
+                    <span class='badge'>{mod['cert']}</span>
+                    <h3>{mod['title']}</h3>
+                    <p>{mod['desc']}</p>
+                    <div style='margin-top: 10px; font-size: 0.8rem; font-weight: bold; color: #64748b;'>{mod['diff']}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"GO: {mod['title']}", key=f"mod_{mod['id']}"):
+                st.session_state.messages.append({"role": "user", "content": f"Aide-moi sur le module {mod['title']}"})
+                st.session_state.view = 'Chat'
+                st.rerun()
+
+def view_chat():
+    st.markdown("<h2 class='techmate-title'>LABO SOCRATIQUE</h2>", unsafe_allow_html=True)
+    
+    for m in st.session_state.messages:
+        with st.chat_message(m['role']):
+            st.write(m['content'])
+
+    if prompt := st.chat_input("Pose une question technique..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+        
+        with st.chat_message("assistant"):
+            with st.spinner("TECHMATE analyse..."):
+                resp = get_mentor_response(prompt)
+                st.write(resp)
+                st.session_state.messages.append({"role": "assistant", "content": resp})
+
+def view_library():
+    st.markdown("<h2 class='techmate-title'>MA BIBLIOTHÈQUE</h2>", unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.markdown("### 📥 Ajouter")
+        uploaded_file = st.file_uploader("PDF / Doc", type=['pdf', 'docx', 'txt'])
+        if uploaded_file:
+            st.success(f"Fichier {uploaded_file.name} reçu ! (Simulation)")
+    
+    with col2:
+        st.info("Cette section simule le stockage de tes fichiers de cours.")
+
+def view_games():
+    st.markdown("<h2 class='techmate-title'>ARCADE TI</h2>", unsafe_allow_html=True)
+    
+    if st.session_state.game_over:
+        st.error("GAME OVER!")
+        if st.button("REJOUER / RESTART"):
+            st.session_state.game_over = False
+            st.session_state.game_score = 0
+            st.session_state.game_joker = True
+            st.rerun()
+        return
+
+    # Skor ve Joker gösterimi (Rengi CSS ile düzelttik)
+    st.markdown(f"#### Score: {st.session_state.game_score} XP | Joker: {'✅' if st.session_state.game_joker else '❌'}")
+    
+    if st.session_state.current_game_id is None:
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🚀 Maître des Ports"): st.session_state.current_game_id = 'ports'; st.rerun()
+        with c2:
+            if st.button("💻 Terminal Héros"): st.session_state.current_game_id = 'commands'; st.rerun()
+    else:
+        if st.session_state.game_question is None:
+            if st.session_state.current_game_id == 'ports':
+                st.session_state.game_question = random.choice(PORTS_DATA)
+            else:
+                st.session_state.game_question = random.choice(COMMANDS_FR)
+        
+        q = st.session_state.game_question
+        
+        # Oyun Sorusu Kartı
+        st.markdown(f"<div class='module-card' style='text-align:center;'><h3>{q.get('name') or q.get('q')}</h3></div>", unsafe_allow_html=True)
+        
+        if st.session_state.current_game_id == 'ports':
+            guess = st.number_input("Port #", value=0)
+            if st.button("Vérifier"):
+                if guess == q['port']:
+                    st.session_state.game_score += 50
+                    st.success("Correct!")
+                    st.session_state.game_question = None
+                    st.rerun()
+                else:
+                    st.error(f"Non! C'était {q['port']}")
+                    st.session_state.game_over = True
+                    st.rerun()
+        else:
+            ans = st.radio("Options:", q['opts'])
+            if st.button("Valider"):
+                if ans == q['a']:
+                    st.session_state.game_score += 100
+                    st.success("Bravo!")
+                    st.session_state.game_question = None
+                    st.rerun()
+                else:
+                    st.error("Perdu!")
+                    st.session_state.game_over = True
+                    st.rerun()
+            
+        if st.button("⬅️ Menu Arcade"):
+            st.session_state.current_game_id = None
+            st.session_state.game_question = None
+            st.rerun()
+
+def view_resources():
+    st.markdown("<h2 class='techmate-title'>RESSOURCES</h2>", unsafe_allow_html=True)
+    st.markdown("- [Inforoute FPT](https://www.inforoutefpt.org)\n- [Cisco Skills](https://skillsforall.com)")
+
+# --- MAIN ROUTING ---
+if st.session_state.view == 'Home': view_home()
+elif st.session_state.view == 'Chat': view_chat()
+elif st.session_state.view == 'Library': view_library()
+elif st.session_state.view == 'Games': view_games()
+elif st.session_state.view == 'Resources': view_resources()
