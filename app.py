@@ -133,7 +133,7 @@ def get_mentor_response(user_input):
     
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         lang_prompt = "Français (Québec)" if st.session_state.lang == 'fr' else "English"
         system_prompt = f"""
